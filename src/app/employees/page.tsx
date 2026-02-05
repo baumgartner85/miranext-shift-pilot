@@ -9,6 +9,8 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
 import { Skeleton } from '@/components/ui/skeleton';
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
+import { PreferencesDialog } from '@/components/PreferencesDialog';
 import {
     Users,
     RefreshCw,
@@ -17,7 +19,11 @@ import {
     Search,
     User,
     Mail,
-    Briefcase
+    Briefcase,
+    MapPin,
+    Eye,
+    EyeOff,
+    Settings2
 } from 'lucide-react';
 
 interface AplanoUser {
@@ -27,6 +33,8 @@ interface AplanoUser {
     displayName?: string;
     email?: string;
     isInactive?: boolean;
+    jobPositions?: string[];
+    branches?: string[];
 }
 
 interface AplanoContract {
@@ -48,6 +56,9 @@ export default function EmployeesPage() {
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState<string | null>(null);
     const [searchTerm, setSearchTerm] = useState('');
+    const [showInactive, setShowInactive] = useState(false);
+    const [selectedUser, setSelectedUser] = useState<AplanoUser | null>(null);
+    const [preferencesOpen, setPreferencesOpen] = useState(false);
 
     const fetchData = async () => {
         if (!activeAdapter?.apiToken) return;
@@ -95,13 +106,18 @@ export default function EmployeesPage() {
         const email = user.email || '';
         if (email.startsWith('deleted-')) return false;
 
+        // Filter by active/inactive status
+        if (!showInactive && user.isInactive) return false;
+
         // Use displayName for search, fallback to firstName/lastName
         const fullName = user.displayName || `${user.firstName || ''} ${user.lastName || ''}`;
         return fullName.toLowerCase().includes(searchTerm.toLowerCase());
     });
 
-    // Rename for clarity - we show all users with status badges
-    const activeUsers = filteredUsers;
+    // Count only active users for the badge
+    const activeCount = users.filter(u => !u.isInactive && !(u.email || '').startsWith('deleted-')).length;
+    const inactiveCount = users.filter(u => u.isInactive && !(u.email || '').startsWith('deleted-')).length;
+    const displayedUsers = filteredUsers;
 
     // Show loading skeleton before hydration
     if (!mounted) {
@@ -181,11 +197,38 @@ export default function EmployeesPage() {
                 </Card>
             )}
 
-            {/* Stats */}
-            <div className="flex gap-4">
-                <Badge variant="outline" className="text-sm py-1 px-3">
-                    {activeUsers.length} Mitarbeiter
-                </Badge>
+            {/* Stats and Filter */}
+            <div className="flex items-center gap-4 justify-between flex-wrap">
+                <div className="flex gap-3">
+                    <Badge variant="outline" className="text-sm py-1 px-3">
+                        {activeCount} Aktiv
+                    </Badge>
+                    {inactiveCount > 0 && (
+                        <Badge variant="outline" className="text-sm py-1 px-3 opacity-60">
+                            {inactiveCount} Inaktiv
+                        </Badge>
+                    )}
+                </div>
+                <TooltipProvider>
+                    <Tooltip>
+                        <TooltipTrigger asChild>
+                            <Button
+                                variant="ghost"
+                                size="sm"
+                                onClick={() => setShowInactive(!showInactive)}
+                                className={showInactive ? 'text-amber-400' : 'text-muted-foreground'}
+                            >
+                                {showInactive ? <Eye size={16} /> : <EyeOff size={16} />}
+                                <span className="ml-2 text-sm">
+                                    {showInactive ? 'Inaktive ausblenden' : 'Inaktive anzeigen'}
+                                </span>
+                            </Button>
+                        </TooltipTrigger>
+                        <TooltipContent>
+                            <p>{showInactive ? 'Klicken um inaktive Mitarbeiter auszublenden' : 'Klicken um inaktive Mitarbeiter anzuzeigen'}</p>
+                        </TooltipContent>
+                    </Tooltip>
+                </TooltipProvider>
             </div>
 
             {/* User List */}
@@ -207,7 +250,7 @@ export default function EmployeesPage() {
                 </div>
             ) : (
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                    {activeUsers.map(user => {
+                    {displayedUsers.map(user => {
                         const contract = contracts.get(user.id);
                         const status = user.isInactive ? 'inactive' : 'active';
                         return (
@@ -243,6 +286,42 @@ export default function EmployeesPage() {
                                                     {contract.totalHours}h/Woche
                                                 </div>
                                             )}
+                                            {user.jobPositions && user.jobPositions.length > 0 && (
+                                                <div className="text-sm text-muted-foreground flex items-center gap-1 mt-1">
+                                                    <User size={12} />
+                                                    {user.jobPositions.join(', ')}
+                                                </div>
+                                            )}
+                                            {user.branches && user.branches.length > 0 && (
+                                                <div className="text-sm text-muted-foreground flex items-center gap-1 mt-1">
+                                                    <MapPin size={12} />
+                                                    {user.branches.join(', ')}
+                                                </div>
+                                            )}
+                                            {/* Preferences Button */}
+                                            <div className="mt-3 pt-2 border-t border-slate-700">
+                                                <TooltipProvider>
+                                                    <Tooltip>
+                                                        <TooltipTrigger asChild>
+                                                            <Button
+                                                                variant="ghost"
+                                                                size="sm"
+                                                                className="w-full text-xs"
+                                                                onClick={() => {
+                                                                    setSelectedUser(user);
+                                                                    setPreferencesOpen(true);
+                                                                }}
+                                                            >
+                                                                <Settings2 size={14} className="mr-2" />
+                                                                Dienstplanvorlieben
+                                                            </Button>
+                                                        </TooltipTrigger>
+                                                        <TooltipContent>
+                                                            <p>Schichtpräferenzen für diesen Mitarbeiter verwalten</p>
+                                                        </TooltipContent>
+                                                    </Tooltip>
+                                                </TooltipProvider>
+                                            </div>
                                         </div>
                                     </div>
                                 </CardContent>
@@ -252,7 +331,15 @@ export default function EmployeesPage() {
                 </div>
             )}
 
-
+            {/* Preferences Dialog */}
+            {selectedUser && (
+                <PreferencesDialog
+                    open={preferencesOpen}
+                    onOpenChange={setPreferencesOpen}
+                    userId={selectedUser.id}
+                    userName={selectedUser.displayName || `${selectedUser.firstName || ''} ${selectedUser.lastName || ''}`.trim() || 'Unbekannt'}
+                />
+            )}
         </div>
     );
 }

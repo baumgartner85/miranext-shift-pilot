@@ -4,11 +4,13 @@ import { AplanoAdapter } from '@/lib/adapters/aplano-adapter';
 // Helper to get user display name from various API formats
 function getUserName(user: any): string {
     if (!user) return 'Unbekannt';
+    // Aplano API returns 'name' field directly (e.g., "Baumgartner David")
+    const name = user.name || '';
+    if (name) return name.trim();
+    // Fallback to firstName/lastName if available
     const firstName = user.firstName || user.first_name || user.firstname || '';
     const lastName = user.lastName || user.last_name || user.lastname || '';
-    const name = user.name || '';
     if (firstName || lastName) return `${firstName} ${lastName}`.trim();
-    if (name) return name;
     return 'Unbekannt';
 }
 
@@ -16,6 +18,21 @@ function getUserName(user: any): string {
 function getWeeklyHours(contracts: any[], userId: string): number {
     const contract = contracts.find(c => (c.userId || c.user_id) === userId);
     return contract?.totalHours || contract?.total_hours || 0;
+}
+
+// Helper to check if user is inactive based on lastWorkDay or isDeleted
+function isUserInactive(user: any): boolean {
+    // Check isDeleted flag
+    if (user.isDeleted || user.is_deleted) return true;
+
+    // Check lastWorkDay - if in the past, user is deactivated
+    const lastWorkDay = user.lastWorkDay || user.last_work_day;
+    if (lastWorkDay) {
+        const today = new Date().toISOString().split('T')[0];
+        return lastWorkDay < today;
+    }
+
+    return false;
 }
 
 // GET /api/aplano/structured-data - Alle Daten strukturiert
@@ -48,7 +65,15 @@ export async function GET(request: NextRequest) {
 
         // Debug: Log first user to see field structure
         console.log('Sample user:', JSON.stringify(users[0], null, 2));
+        console.log('All user fields:', users[0] ? Object.keys(users[0]) : []);
+        // Find Teresa to see her status
+        const teresa = users.find((u: any) => u.name?.includes('Teresa') || u.name?.includes('Reiter'));
+        if (teresa) {
+            console.log('Teresa user data:', JSON.stringify(teresa, null, 2));
+        }
         console.log('Sample shift:', JSON.stringify(shifts[0], null, 2));
+        console.log('Sample contract:', JSON.stringify(contracts[0], null, 2));
+        console.log('Total contracts:', contracts.length);
 
         // Normalize user data and filter out deleted users
         const normalizedUsers = users
@@ -59,10 +84,13 @@ export async function GET(request: NextRequest) {
             })
             .map((u: any) => ({
                 id: u.id,
+                name: u.name || '',
                 firstName: u.firstName || u.first_name || u.firstname || '',
                 lastName: u.lastName || u.last_name || u.lastname || '',
                 email: u.email || '',
-                isInactive: u.isInactive ?? u.is_inactive ?? false,
+                lastWorkDay: u.lastWorkDay || u.last_work_day || null,
+                // Determine inactive status: isDeleted flag OR lastWorkDay in the past
+                isInactive: isUserInactive(u),
             }));
 
         // 1. Mitarbeiter nach Status mit Wochenstunden

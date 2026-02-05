@@ -89,10 +89,10 @@ export default function PlannerPage() {
 
 Ich habe Zugriff auf alle Ihre Aplano-Daten und kann:
 
-• **Schichttypen analysieren** - Früh, Spät, Nacht, etc. aus historischen Daten erkennen
-• **Personalbedarf berechnen** - Pro Rolle (RT, Arzt, Sekretariat) und Wochentag
-• **Dienstplan generieren** - AZG-konforme Monatspläne erstellen
-• **Muster erkennen** - Historische Schichtmuster analysieren
+• Schichttypen analysieren – Früh, Spät, Nacht, etc. aus historischen Daten erkennen
+• Personalbedarf berechnen – Pro Rolle (RT, Arzt, Sekretariat) und Wochentag
+• Dienstplan generieren – AZG-konforme Monatspläne erstellen
+• Muster erkennen – Historische Schichtmuster analysieren
 
 Nutzen Sie die Schnellaktionen unten oder stellen Sie mir direkt eine Frage!`,
             timestamp: new Date(),

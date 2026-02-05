@@ -7,7 +7,8 @@ import {
     AlertTriangle,
     CheckCircle2,
     User,
-    Clock
+    Clock,
+    Filter
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -49,20 +50,50 @@ function getFirstDayOfMonth(year: number, month: number) {
 export function ShiftCalendar({ shifts, month, onMonthChange, onShiftClick }: ShiftCalendarProps) {
     const [year, monthNum] = month.split('-').map(Number);
     const monthIndex = monthNum - 1;
+    const [selectedRoles, setSelectedRoles] = useState<Set<string>>(new Set());
 
     const daysInMonth = getDaysInMonth(year, monthIndex);
     const firstDay = getFirstDayOfMonth(year, monthIndex);
 
+    // Get unique roles from shifts
+    const availableRoles = useMemo(() => {
+        const roles = new Set<string>();
+        shifts.forEach(s => {
+            if (s.role && s.role !== 'Unbekannt') {
+                roles.add(s.role);
+            }
+        });
+        return Array.from(roles).sort();
+    }, [shifts]);
+
+    // Filter shifts by selected roles
+    const filteredShifts = useMemo(() => {
+        if (selectedRoles.size === 0) return shifts;
+        return shifts.filter(s => selectedRoles.has(s.role));
+    }, [shifts, selectedRoles]);
+
     // Group shifts by date
     const shiftsByDate = useMemo(() => {
         const map = new Map<string, Shift[]>();
-        shifts.forEach(shift => {
+        filteredShifts.forEach(shift => {
             const existing = map.get(shift.date) || [];
             existing.push(shift);
             map.set(shift.date, existing);
         });
         return map;
-    }, [shifts]);
+    }, [filteredShifts]);
+
+    const toggleRole = (role: string) => {
+        setSelectedRoles(prev => {
+            const next = new Set(prev);
+            if (next.has(role)) {
+                next.delete(role);
+            } else {
+                next.add(role);
+            }
+            return next;
+        });
+    };
 
     const handlePrevMonth = () => {
         const newDate = new Date(year, monthIndex - 1);
@@ -103,6 +134,46 @@ export function ShiftCalendar({ shifts, month, onMonthChange, onShiftClick }: Sh
                     <ChevronRight size={20} />
                 </Button>
             </div>
+
+            {/* Role Filters */}
+            {availableRoles.length > 0 && (
+                <div className="flex items-center gap-2 p-3 border-b flex-wrap">
+                    <div className="flex items-center gap-1 text-sm text-muted-foreground">
+                        <Filter size={14} />
+                        <span>Berufsgruppen:</span>
+                    </div>
+                    <button
+                        onClick={() => setSelectedRoles(new Set())}
+                        className={cn(
+                            "px-2 py-1 rounded-md text-xs font-medium transition-colors",
+                            selectedRoles.size === 0
+                                ? "bg-blue-500 text-white"
+                                : "bg-slate-700 text-slate-300 hover:bg-slate-600"
+                        )}
+                    >
+                        Alle
+                    </button>
+                    {availableRoles.map(role => (
+                        <button
+                            key={role}
+                            onClick={() => toggleRole(role)}
+                            className={cn(
+                                "px-2 py-1 rounded-md text-xs font-medium transition-colors",
+                                selectedRoles.has(role)
+                                    ? "bg-blue-500 text-white"
+                                    : "bg-slate-700 text-slate-300 hover:bg-slate-600"
+                            )}
+                        >
+                            {role}
+                        </button>
+                    ))}
+                    {selectedRoles.size > 0 && (
+                        <span className="text-xs text-muted-foreground ml-2">
+                            ({filteredShifts.length} von {shifts.length} Schichten)
+                        </span>
+                    )}
+                </div>
+            )}
 
             {/* Weekday Headers */}
             <div className="grid grid-cols-7 border-b">

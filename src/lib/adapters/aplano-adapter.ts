@@ -153,8 +153,11 @@ export class AplanoAdapter {
     /**
      * GET /users - Alle Mitarbeiter abrufen
      */
-    async getUsers(): Promise<AplanoUser[]> {
-        const response = await this.request<ApiResponse<AplanoUser[]>>('/users');
+    async getUsers(options?: { expand?: boolean }): Promise<AplanoUser[]> {
+        const params = new URLSearchParams();
+        if (options?.expand) params.append('expand', 'true');
+        const query = params.toString() ? `?${params.toString()}` : '';
+        const response = await this.request<ApiResponse<AplanoUser[]>>(`/users${query}`);
         return response.data;
     }
 
