@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 import { useLanguage } from '@/context/LanguageContext';
 import { useSettingsStore, AdapterType } from '@/domain/settings-store';
 import { useMounted } from '@/hooks/useMounted';
@@ -118,7 +118,7 @@ export default function SettingsPage() {
                     </TabsTrigger>
                     <TabsTrigger value="ai" className="flex items-center gap-2">
                         <Bot size={16} />
-                        KI-Konfiguration
+                        KI-Dienste
                     </TabsTrigger>
                 </TabsList>
 
@@ -305,32 +305,22 @@ export default function SettingsPage() {
                             </CardDescription>
                         </CardHeader>
                         <CardContent className="space-y-4">
-                            <div>
-                                <Label>Gemini API Key</Label>
+                            <div className="space-y-2">
+                                <Label htmlFor="geminiApiKey">Gemini API Key</Label>
                                 <Input
+                                    id="geminiApiKey"
                                     type="password"
-                                    value={geminiApiKey}
-                                    onChange={(e) => setGeminiApiKey(e.target.value)}
-                                    placeholder="AIza..."
+                                    value={tempAiKeys.gemini}
+                                    onChange={(e) => setTempAiKeys({ ...tempAiKeys, gemini: e.target.value })}
+                                    placeholder="AIzaSy..."
                                 />
-                                <p className="text-xs text-muted-foreground mt-1">
-                                    Erstellen Sie einen API-Key auf{' '}
-                                    <a
-                                        href="https://aistudio.google.com/apikey"
-                                        target="_blank"
-                                        rel="noopener noreferrer"
-                                        className="text-blue-500 hover:underline"
-                                    >
-                                        Google AI Studio
-                                    </a>
+                                <p className="text-xs text-muted-foreground">
+                                    Erforderlich für die automatische Schichtplanoptimierung.
                                 </p>
                             </div>
-                            {geminiApiKey && (
-                                <div className="flex items-center gap-2 text-green-500">
-                                    <CheckCircle2 size={16} />
-                                    <span className="text-sm">API Key konfiguriert</span>
-                                </div>
-                            )}
+                            <Button onClick={handleSaveAiKeys}>
+                                {t('common.save')}
+                            </Button>
                         </CardContent>
                     </Card>
                 </TabsContent>
